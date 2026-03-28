@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+body {
+  background-color: #1A1A2E;
+  color: #E2E8F0;
+  font-family: 'Inter', sans-serif;
+}
+
+@layer utilities {
+  .gradient-brand {
+    background: linear-gradient(135deg, #6C63FF, #4B44CC);
+  }
+  .gradient-card {
+    background: linear-gradient(135deg, #16213E, #0F3460);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #6C63FF, #00C896);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
