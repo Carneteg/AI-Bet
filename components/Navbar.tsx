@@ -8,6 +8,7 @@ const links = [
   { href: "/", label: "Hem" },
   { href: "/matches", label: "Matcher" },
   { href: "/coupon", label: "Kupong" },
+  { href: "/upload", label: "📸 Analysera foto" },
 ];
 
 export default function Navbar() {
@@ -32,6 +33,8 @@ export default function Navbar() {
                 "px-4 py-2 rounded-lg text-sm font-medium transition",
                 pathname === link.href
                   ? "bg-brand/20 text-brand"
+                  : link.href === "/upload"
+                  ? "text-accent-yellow hover:text-accent-yellow/80 hover:bg-accent-yellow/5"
                   : "text-slate-400 hover:text-slate-200 hover:bg-surface-card"
               )}
             >
