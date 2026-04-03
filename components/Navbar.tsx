@@ -9,6 +9,7 @@ const links = [
   { href: "/matches", label: "Matcher" },
   { href: "/coupon", label: "Kupong" },
   { href: "/upload", label: "📸 Analysera foto" },
+  { href: "/stats", label: "📈 Statistik" },
 ];
 
 export default function Navbar() {
