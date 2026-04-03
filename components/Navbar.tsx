@@ -6,7 +6,8 @@ import clsx from "clsx";
 
 const links = [
   { href: "/", label: "Hem" },
-  { href: "/matches", label: "Matcher" },
+  { href: "/matches", label: "⚽ Fotboll" },
+  { href: "/horse", label: "🐎 V75/V86" },
   { href: "/coupon", label: "Kupong" },
   { href: "/upload", label: "📸 Analysera foto" },
   { href: "/stats", label: "📈 Statistik" },
