@@ -49,7 +49,7 @@ const rawMatches: Match[] = [
   {
     id: 1, matchNumber: 1,
     homeTeam: "Manchester City", awayTeam: "Arsenal",
-    league: "Premier League", date: "2025-04-05", time: "16:00",
+    league: "Premier League", date: "2026-04-03", time: "16:00",
     odds: { home: 1.85, draw: 3.5, away: 4.2 },
     probabilities: { home: 55, draw: 24, away: 21 },
     streckning: { home: 62, draw: 22, away: 16 },
@@ -62,7 +62,7 @@ const rawMatches: Match[] = [
   {
     id: 2, matchNumber: 2,
     homeTeam: "Bayer Leverkusen", awayTeam: "Bayern München",
-    league: "Bundesliga", date: "2025-04-05", time: "18:30",
+    league: "Bundesliga", date: "2026-04-03", time: "18:30",
     odds: { home: 2.9, draw: 3.4, away: 2.45 },
     probabilities: { home: 33, draw: 27, away: 40 },
     streckning: { home: 28, draw: 30, away: 42 },
@@ -75,7 +75,7 @@ const rawMatches: Match[] = [
   {
     id: 3, matchNumber: 3,
     homeTeam: "Malmö FF", awayTeam: "IFK Göteborg",
-    league: "Allsvenskan", date: "2025-04-05", time: "15:00",
+    league: "Allsvenskan", date: "2026-04-03", time: "15:00",
     odds: { home: 1.7, draw: 3.6, away: 5.5 },
     probabilities: { home: 64, draw: 21, away: 15 },
     streckning: { home: 71, draw: 18, away: 11 },
@@ -88,7 +88,7 @@ const rawMatches: Match[] = [
   {
     id: 4, matchNumber: 4,
     homeTeam: "Real Madrid", awayTeam: "Atletico Madrid",
-    league: "La Liga", date: "2025-04-06", time: "21:00",
+    league: "La Liga", date: "2026-04-03", time: "21:00",
     odds: { home: 2.1, draw: 3.2, away: 3.6 },
     probabilities: { home: 46, draw: 28, away: 26 },
     streckning: { home: 53, draw: 25, away: 22 },
@@ -101,7 +101,7 @@ const rawMatches: Match[] = [
   {
     id: 5, matchNumber: 5,
     homeTeam: "Nottingham Forest", awayTeam: "Liverpool",
-    league: "Premier League", date: "2025-04-06", time: "14:00",
+    league: "Premier League", date: "2026-04-03", time: "14:00",
     odds: { home: 5.2, draw: 4.0, away: 1.6 },
     probabilities: { home: 18, draw: 23, away: 59 },
     streckning: { home: 9, draw: 18, away: 73 },
@@ -114,7 +114,7 @@ const rawMatches: Match[] = [
   {
     id: 6, matchNumber: 6,
     homeTeam: "PSG", awayTeam: "Marseille",
-    league: "Ligue 1", date: "2025-04-06", time: "20:45",
+    league: "Ligue 1", date: "2026-04-03", time: "20:45",
     odds: { home: 1.55, draw: 4.1, away: 5.8 },
     probabilities: { home: 67, draw: 20, away: 13 },
     streckning: { home: 74, draw: 17, away: 9 },
@@ -127,7 +127,7 @@ const rawMatches: Match[] = [
   {
     id: 7, matchNumber: 7,
     homeTeam: "Napoli", awayTeam: "Inter Milan",
-    league: "Serie A", date: "2025-04-07", time: "20:45",
+    league: "Serie A", date: "2026-04-04", time: "20:45",
     odds: { home: 2.8, draw: 3.3, away: 2.5 },
     probabilities: { home: 33, draw: 29, away: 38 },
     streckning: { home: 30, draw: 28, away: 42 },
@@ -140,7 +140,7 @@ const rawMatches: Match[] = [
   {
     id: 8, matchNumber: 8,
     homeTeam: "Dortmund", awayTeam: "RB Leipzig",
-    league: "Bundesliga", date: "2025-04-07", time: "18:30",
+    league: "Bundesliga", date: "2026-04-04", time: "18:30",
     odds: { home: 2.3, draw: 3.4, away: 3.1 },
     probabilities: { home: 41, draw: 27, away: 32 },
     streckning: { home: 48, draw: 24, away: 28 },
@@ -153,7 +153,7 @@ const rawMatches: Match[] = [
   {
     id: 9, matchNumber: 9,
     homeTeam: "Celtic", awayTeam: "Rangers",
-    league: "Scottish Prem.", date: "2025-04-07", time: "13:30",
+    league: "Scottish Prem.", date: "2026-04-04", time: "13:30",
     odds: { home: 1.9, draw: 3.5, away: 3.9 },
     probabilities: { home: 52, draw: 26, away: 22 },
     streckning: { home: 58, draw: 23, away: 19 },
@@ -166,7 +166,7 @@ const rawMatches: Match[] = [
   {
     id: 10, matchNumber: 10,
     homeTeam: "AIK", awayTeam: "Djurgårdens IF",
-    league: "Allsvenskan", date: "2025-04-07", time: "17:30",
+    league: "Allsvenskan", date: "2026-04-04", time: "17:30",
     odds: { home: 2.5, draw: 3.2, away: 2.8 },
     probabilities: { home: 37, draw: 30, away: 33 },
     streckning: { home: 42, draw: 27, away: 31 },
@@ -179,7 +179,7 @@ const rawMatches: Match[] = [
   {
     id: 11, matchNumber: 11,
     homeTeam: "Porto", awayTeam: "Benfica",
-    league: "Primeira Liga", date: "2025-04-08", time: "21:15",
+    league: "Primeira Liga", date: "2026-04-04", time: "21:15",
     odds: { home: 2.6, draw: 3.3, away: 2.7 },
     probabilities: { home: 39, draw: 27, away: 34 },
     streckning: { home: 36, draw: 29, away: 35 },
@@ -192,7 +192,7 @@ const rawMatches: Match[] = [
   {
     id: 12, matchNumber: 12,
     homeTeam: "Tottenham", awayTeam: "Chelsea",
-    league: "Premier League", date: "2025-04-08", time: "20:00",
+    league: "Premier League", date: "2026-04-04", time: "20:00",
     odds: { home: 3.1, draw: 3.4, away: 2.3 },
     probabilities: { home: 27, draw: 27, away: 46 },
     streckning: { home: 22, draw: 25, away: 53 },
@@ -205,7 +205,7 @@ const rawMatches: Match[] = [
   {
     id: 13, matchNumber: 13,
     homeTeam: "Hammarby", awayTeam: "Häcken",
-    league: "Allsvenskan", date: "2025-04-08", time: "19:00",
+    league: "Allsvenskan", date: "2026-04-04", time: "19:00",
     odds: { home: 2.2, draw: 3.4, away: 3.2 },
     probabilities: { home: 44, draw: 28, away: 28 },
     streckning: { home: 47, draw: 26, away: 27 },
