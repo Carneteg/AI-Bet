@@ -274,7 +274,7 @@ export function getTeamFormStats(): Map<string, TeamFormStats> {
   return _formCache;
 }
 
-export function lookupTeamForm(teamName: string): TeamFormStats | null {
+export function getTeamForm(teamName: string): TeamFormStats | null {
   const map = getTeamFormStats();
   return map.get(teamName.toLowerCase()) ?? null;
 }
@@ -288,8 +288,8 @@ export function enrichMatchWithSoccerwayData<
     homeAdvantageFactor: number;
   }
 >(match: T): T {
-  const homeStats = lookupTeamForm(match.homeTeam);
-  const awayStats = lookupTeamForm(match.awayTeam);
+  const homeStats = getTeamForm(match.homeTeam);
+  const awayStats = getTeamForm(match.awayTeam);
   return {
     ...match,
     homeForm: homeStats?.formString ?? match.homeForm,
@@ -298,4 +298,4 @@ export function enrichMatchWithSoccerwayData<
       ? Math.min(1.3, Math.max(1.0, 1.0 + (homeStats.homeWinRate - 40) / 200))
       : match.homeAdvantageFactor,
   };
-     }
+}

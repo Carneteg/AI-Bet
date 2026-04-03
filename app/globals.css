@@ -11,12 +11,6 @@ body {
 }
 
 @layer utilities {
-  .gradient-brand {
-    background: linear-gradient(135deg, #6C63FF, #4B44CC);
-  }
-  .gradient-card {
-    background: linear-gradient(135deg, #16213E, #0F3460);
-  }
   .text-gradient {
     background: linear-gradient(135deg, #6C63FF, #00C896);
     -webkit-background-clip: text;

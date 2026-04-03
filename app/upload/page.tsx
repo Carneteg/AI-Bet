@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import MatchImageUpload from "@/components/MatchImageUpload";
 import type { AnalyzedMatchResult } from "@/components/MatchImageUpload";
+import RecommendationTag from "@/components/RecommendationTag";
+import { calculateRecommendation } from "@/lib/recommendations";
+import { getValueLabel } from "@/lib/valueScore";
 
 export default function UploadPage() {
   const [results, setResults] = useState<AnalyzedMatchResult[]>([]);
@@ -77,23 +80,19 @@ function AnalyzedMatchCard({
     Math.max(0, Math.round(50 + bestEdge * 2.5))
   );
 
-  const recommendation =
-    valueScore >= 75 && match.probability.home >= 55
-      ? "Spik"
-      : bestEdge >= 8 && match.probability[bestSign === "1" ? "home" : bestSign === "X" ? "draw" : "away"] <= 30
-      ? "Skräll"
-      : valueScore < 50
-      ? "Gardering"
-      : "Normal";
+  const bestSignProbability =
+    bestSign === "1"
+      ? match.probability.home
+      : bestSign === "X"
+      ? match.probability.draw
+      : match.probability.away;
 
-  const recColor =
-    recommendation === "Spik"
-      ? "text-accent-green border-accent-green/30 bg-accent-green/10"
-      : recommendation === "Skräll"
-      ? "text-accent-yellow border-accent-yellow/30 bg-accent-yellow/10"
-      : recommendation === "Gardering"
-      ? "text-brand border-brand/30 bg-brand/10"
-      : "text-slate-400 border-slate-600 bg-slate-700/30";
+  const recommendation = calculateRecommendation({
+    valueScore,
+    bestEdge,
+    bestSignProbability,
+    homeProbability: match.probability.home,
+  });
 
   return (
     <div className="bg-surface-card border border-slate-700 hover:border-brand/40 rounded-2xl p-5 transition">
@@ -108,18 +107,7 @@ function AnalyzedMatchCard({
             {match.awayTeam}
           </div>
         </div>
-        <span
-          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-semibold ${recColor}`}
-        >
-          {recommendation === "Spik"
-            ? "🔒"
-            : recommendation === "Skräll"
-            ? "⚡"
-            : recommendation === "Gardering"
-            ? "🛡️"
-            : "📊"}{" "}
-          {recommendation}
-        </span>
+        <RecommendationTag recommendation={recommendation} />
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-4">
@@ -177,14 +165,7 @@ function AnalyzedMatchCard({
         <div className="text-sm font-semibold text-brand">
           {valueScore}{" "}
           <span className="text-xs font-normal text-slate-500">
-            /{" "}
-            {valueScore >= 85
-              ? "Utmärkt"
-              : valueScore >= 70
-              ? "Bra"
-              : valueScore >= 55
-              ? "OK"
-              : "Svagt"}
+            / {getValueLabel(valueScore)}
           </span>
         </div>
       </div>
@@ -196,4 +177,4 @@ function AnalyzedMatchCard({
       )}
     </div>
   );
-      }
+}
