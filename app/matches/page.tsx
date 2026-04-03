@@ -16,11 +16,24 @@ export default function MatchesPage() {
 
   return (
     <div>
-      <div className="mb-10">
+      <div className="mb-6">
         <h1 className="text-4xl font-extrabold mb-2">Matchanalys</h1>
         <p className="text-slate-400">
-          Alla {matches.length} matcher med value score, odds och rekommendation.
+          Alla {matches.length} matcher med value score, xG, streckning-edge och Kelly-rekommendationer.
         </p>
+      </div>
+
+      {/* Legend */}
+      <div className="mb-8 bg-surface-card border border-slate-700 rounded-2xl p-4 flex flex-wrap gap-6 text-xs text-slate-400">
+        <div>
+          <span className="text-accent-green font-semibold">+Xpp</span> = streckning-edge (din sannolikhet minus streckad %)
+        </div>
+        <div>
+          <span className="text-slate-300 font-semibold">xG</span> = expected goals (mer prediktivt än faktiska mål)
+        </div>
+        <div>
+          <span className="text-brand font-semibold">Kelly %</span> = rekommenderad insats av bankroll (1/4 Kelly)
+        </div>
       </div>
 
       {sections.map(
