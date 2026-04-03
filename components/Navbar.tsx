@@ -6,6 +6,7 @@ import clsx from "clsx";
 
 const links = [
   { href: "/", label: "Hem" },
+  { href: "/live", label: "🟢 Live" },
   { href: "/matches", label: "Matcher" },
   { href: "/coupon", label: "Kupong" },
   { href: "/upload", label: "📸 Analysera foto" },
