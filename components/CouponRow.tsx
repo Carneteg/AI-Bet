@@ -35,6 +35,8 @@ export default function CouponRow({ match, selections, onSelect }: Props) {
             <button
               key={sign}
               onClick={() => onSelect(sign)}
+              aria-label={`${sign === "1" ? "Hemmavinst" : sign === "X" ? "Oavgjort" : "Bortavinst"} — ${selected ? "vald" : "ej vald"}`}
+              aria-pressed={selected}
               className={clsx(
                 "w-10 h-10 rounded-lg font-bold text-sm border transition",
                 selected

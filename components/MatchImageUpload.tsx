@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export interface AnalyzedMatchResult {
   homeTeam: string;
@@ -30,6 +30,26 @@ export default function MatchImageUpload({
   const [fileName, setFileName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Track the latest request so stale responses from earlier uploads are ignored
+  const requestIdRef = useRef(0);
+  // Track mounted state so we never set state after unmount
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Revoke the previous object URL when preview changes to prevent memory leaks
+  const prevPreviewRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevPreviewRef.current;
+    if (prev && prev !== preview) URL.revokeObjectURL(prev);
+    prevPreviewRef.current = preview;
+  }, [preview]);
+  // Revoke on unmount
+  useEffect(() => {
+    return () => { if (prevPreviewRef.current) URL.revokeObjectURL(prevPreviewRef.current); };
+  }, []);
+
   const processFile = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) {
@@ -41,9 +61,11 @@ export default function MatchImageUpload({
         return;
       }
 
+      // Assign a new request ID for this upload; stale responses will be dropped
+      const thisRequestId = ++requestIdRef.current;
+
       setFileName(file.name);
-      const objectUrl = URL.createObjectURL(file);
-      setPreview(objectUrl);
+      setPreview(URL.createObjectURL(file));
       setIsLoading(true);
 
       try {
@@ -55,21 +77,32 @@ export default function MatchImageUpload({
           body: formData,
         });
 
+        // Drop result if a newer upload has started or component unmounted
+        if (!mountedRef.current || thisRequestId !== requestIdRef.current) return;
+
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? `HTTP ${res.status}`);
+          throw new Error(
+            (data as { error?: string }).error ?? `HTTP ${res.status}`
+          );
         }
 
         const data = await res.json();
-        onAnalysis(data.matches ?? []);
+        if (mountedRef.current && thisRequestId === requestIdRef.current) {
+          onAnalysis(Array.isArray(data.matches) ? data.matches : []);
+        }
       } catch (err) {
-        onError(
-          err instanceof Error
-            ? err.message
-            : "Något gick fel vid analysen. Försök igen."
-        );
+        if (mountedRef.current && thisRequestId === requestIdRef.current) {
+          onError(
+            err instanceof Error
+              ? err.message
+              : "Något gick fel vid analysen. Försök igen."
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (mountedRef.current && thisRequestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [onAnalysis, onError, setIsLoading]
@@ -101,6 +134,10 @@ export default function MatchImageUpload({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        aria-label="Ladda upp matchbild — klicka eller dra en fil hit"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
         className={`relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
           isDragging
             ? "border-brand bg-brand/10 scale-[1.01]"
@@ -112,12 +149,13 @@ export default function MatchImageUpload({
           type="file"
           accept="image/*"
           className="hidden"
+          aria-label="Välj bildfil"
           onChange={handleFileChange}
         />
 
         {isLoading ? (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-full border-4 border-brand/30 border-t-brand animate-spin" />
+            <div className="w-12 h-12 rounded-full border-4 border-brand/30 border-t-brand animate-spin" aria-hidden="true" />
             <p className="text-slate-400 font-medium">Analyserar bild med AI...</p>
             <p className="text-slate-500 text-sm">Det tar 5–15 sekunder</p>
           </div>
@@ -125,7 +163,7 @@ export default function MatchImageUpload({
           <div className="flex flex-col items-center gap-4">
             <img
               src={preview}
-              alt="Uppladdad bild"
+              alt="Förhandsvisning av uppladdad matchbild"
               className="max-h-64 rounded-xl object-contain border border-slate-700"
             />
             <p className="text-slate-400 text-sm">{fileName}</p>
@@ -135,7 +173,7 @@ export default function MatchImageUpload({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-3xl">
+            <div className="w-16 h-16 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-3xl" aria-hidden="true">
               📸
             </div>
             <div>
@@ -173,4 +211,4 @@ export default function MatchImageUpload({
       )}
     </div>
   );
-      }
+}

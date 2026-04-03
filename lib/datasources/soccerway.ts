@@ -41,7 +41,7 @@ export function parseSoccerwayRecords(
   let homeWins = 0, homePlayed = 0;
   let awayWins = 0, awayPlayed = 0;
   let totalGoalsFor = 0, totalGoalsAgainst = 0;
-  const formResults: string[] = [];
+  const formResults: Array<"V" | "O" | "F"> = [];
 
   for (const r of played) {
     const parsed = parseScore(r[2]);
@@ -52,10 +52,8 @@ export function parseSoccerwayRecords(
     const goalsAgainst = isHome ? awayGoals : homeGoals;
     totalGoalsFor += goalsFor;
     totalGoalsAgainst += goalsAgainst;
-    let result: string;
-    if (goalsFor > goalsAgainst) result = "V";
-    else if (goalsFor === goalsAgainst) result = "O";
-    else result = "F";
+    const result: "V" | "O" | "F" =
+      goalsFor > goalsAgainst ? "V" : goalsFor === goalsAgainst ? "O" : "F";
     formResults.push(result);
     if (isHome) { homePlayed++; if (result === "V") homeWins++; }
     else { awayPlayed++; if (result === "V") awayWins++; }

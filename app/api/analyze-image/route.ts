@@ -8,7 +8,7 @@ Din uppgift är att extrahera matchinformation från bilden och returnera den so
 
 För varje match du hittar i bilden, returnera:
 - homeTeam: hemmalagets namn (sträng)
-- awayTeam: bortalag (sträng)  
+- awayTeam: bortalag (sträng)
 - league: liganamn om synligt, annars null
 - probability: ditt estimat av sannolikhet för 1/X/2 baserat på odds/streckprocent (0-100, summerar till 100)
 - streckning: streckprocent för 1/X/2 om synlig i bilden (0-100, summerar till 100). Om ej synlig, estimera baserat på odds.
@@ -23,15 +23,73 @@ VIKTIGT:
 - Format: {"matches": [...]}
 `;
 
-export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+// --- Rate limiting (in-memory, per-IP, resets on cold start) ---
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return true;
+  entry.count++;
+  return false;
+}
+
+// --- Type guards for OpenAI response ---
+function toNumberRecord(value: unknown): Record<"home" | "draw" | "away", number> {
+  const defaults = { home: 45, draw: 25, away: 30 };
+  if (typeof value !== "object" || value === null) return defaults;
+  const obj = value as Record<string, unknown>;
+  return {
+    home: typeof obj.home === "number" && Number.isFinite(obj.home) ? obj.home : defaults.home,
+    draw: typeof obj.draw === "number" && Number.isFinite(obj.draw) ? obj.draw : defaults.draw,
+    away: typeof obj.away === "number" && Number.isFinite(obj.away) ? obj.away : defaults.away,
+  };
+}
+
+function toOddsRecord(value: unknown): Record<"home" | "draw" | "away", number> | null {
+  if (typeof value !== "object" || value === null) return null;
+  const obj = value as Record<string, unknown>;
+  if (
+    typeof obj.home !== "number" ||
+    typeof obj.draw !== "number" ||
+    typeof obj.away !== "number"
+  ) return null;
+  return { home: obj.home, draw: obj.draw, away: obj.away };
+}
+
+/** Normalize so home+draw+away sum to exactly 100, preserving ratios. */
+function normalizeToHundred(
+  rec: Record<"home" | "draw" | "away", number>
+): Record<"home" | "draw" | "away", number> {
+  const total = rec.home + rec.draw + rec.away;
+  if (total <= 0) return { home: 45, draw: 25, away: 30 };
+  const home = Math.round((rec.home / total) * 100);
+  const draw = Math.round((rec.draw / total) * 100);
+  const away = 100 - home - draw; // guarantee exact sum of 100
+  return { home, draw, away };
+}
+
+export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "För många förfrågningar. Försök igen om en minut." },
+      { status: 429 }
+    );
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      {
-        error:
-          "OPENAI_API_KEY är inte konfigurerad. Lägg till den i Render Environment Variables.",
-      },
+      { error: "OPENAI_API_KEY är inte konfigurerad." },
       { status: 503 }
     );
   }
@@ -43,7 +101,6 @@ export async function POST(req: NextRequest) {
     if (!imageFile) {
       return NextResponse.json({ error: "Ingen bild skickades." }, { status: 400 });
     }
-
     if (imageFile.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "Bilden är för stor. Max 10 MB." }, { status: 400 });
     }
@@ -64,19 +121,13 @@ export async function POST(req: NextRequest) {
         max_tokens: 2000,
         response_format: { type: "json_object" },
         messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
-          },
+          { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
             content: [
               {
                 type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64}`,
-                  detail: "high",
-                },
+                image_url: { url: `data:${mimeType};base64,${base64}`, detail: "high" },
               },
               {
                 type: "text",
@@ -90,12 +141,14 @@ export async function POST(req: NextRequest) {
 
     if (!openaiRes.ok) {
       const errData = await openaiRes.json().catch(() => ({}));
-      const msg = errData?.error?.message ?? `OpenAI API svarade med status ${openaiRes.status}`;
+      const msg =
+        (errData as { error?: { message?: string } })?.error?.message ??
+        `OpenAI API svarade med status ${openaiRes.status}`;
       return NextResponse.json({ error: msg }, { status: 502 });
     }
 
     const openaiData = await openaiRes.json();
-    const rawContent = openaiData.choices?.[0]?.message?.content ?? "{}";
+    const rawContent: string = openaiData.choices?.[0]?.message?.content ?? "{}";
 
     let parsed: { matches?: unknown[]; error?: string };
     try {
@@ -111,40 +164,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error, matches: [] });
     }
 
-    const matches = (parsed.matches ?? []).map((m: unknown) => {
-      const match = m as Record<string, unknown>;
-      // Normalize probabilities to sum to 100
-      const prob = match.probability as Record<string, number> ?? { home: 45, draw: 25, away: 30 };
-      const streck = match.streckning as Record<string, number> ?? { home: 45, draw: 25, away: 30 };
+    const matches = (Array.isArray(parsed.matches) ? parsed.matches : []).map(
+      (m: unknown) => {
+        const match = typeof m === "object" && m !== null ? (m as Record<string, unknown>) : {};
 
-      const probTotal = (prob.home ?? 0) + (prob.draw ?? 0) + (prob.away ?? 0);
-      const streckTotal = (streck.home ?? 0) + (streck.draw ?? 0) + (streck.away ?? 0);
+        const homeTeam = typeof match.homeTeam === "string" && match.homeTeam.trim()
+          ? match.homeTeam.trim()
+          : "Okänt hemmalag";
+        const awayTeam = typeof match.awayTeam === "string" && match.awayTeam.trim()
+          ? match.awayTeam.trim()
+          : "Okänt bortalag";
 
-      return {
-        homeTeam: match.homeTeam ?? "Okänt hemmalag",
-        awayTeam: match.awayTeam ?? "Okänt bortalag",
-        league: match.league ?? null,
-        probability: {
-          home: probTotal > 0 ? Math.round((prob.home / probTotal) * 100) : 45,
-          draw: probTotal > 0 ? Math.round((prob.draw / probTotal) * 100) : 25,
-          away: probTotal > 0 ? Math.round((prob.away / probTotal) * 100) : 30,
-        },
-        streckning: {
-          home: streckTotal > 0 ? Math.round((streck.home / streckTotal) * 100) : 45,
-          draw: streckTotal > 0 ? Math.round((streck.draw / streckTotal) * 100) : 25,
-          away: streckTotal > 0 ? Math.round((streck.away / streckTotal) * 100) : 30,
-        },
-        odds: match.odds ?? null,
-        rawText: match.rawText ?? null,
-      };
-    });
+        return {
+          homeTeam,
+          awayTeam,
+          league: typeof match.league === "string" ? match.league : null,
+          probability: normalizeToHundred(toNumberRecord(match.probability)),
+          streckning: normalizeToHundred(toNumberRecord(match.streckning)),
+          odds: toOddsRecord(match.odds),
+          rawText: typeof match.rawText === "string" ? match.rawText : null,
+        };
+      }
+    );
 
     return NextResponse.json({ matches });
   } catch (err) {
     console.error("analyze-image error:", err);
-    return NextResponse.json(
-      { error: "Internt serverfel. Försök igen." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internt serverfel. Försök igen." }, { status: 500 });
   }
 }

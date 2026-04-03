@@ -23,20 +23,26 @@ export default function MatchesPage() {
         </p>
       </div>
 
-      {sections.map(
-        (section) =>
-          section.items.length > 0 && (
-            <div key={section.title} className="mb-12">
-              <h2 className="text-xl font-bold mb-4 text-slate-200">
-                {section.title}
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {section.items.map((match) => (
-                  <MatchCard key={match.id} match={match} expanded />
-                ))}
+      {matches.length === 0 ? (
+        <div className="text-center py-20 text-slate-500">
+          Inga matcher tillgängliga just nu.
+        </div>
+      ) : (
+        sections.map(
+          (section) =>
+            section.items.length > 0 && (
+              <div key={section.title} className="mb-12">
+                <h2 className="text-xl font-bold mb-4 text-slate-200">
+                  {section.title}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {section.items.map((match) => (
+                    <MatchCard key={match.id} match={match} expanded />
+                  ))}
+                </div>
               </div>
-            </div>
-          )
+            )
+        )
       )}
     </div>
   );

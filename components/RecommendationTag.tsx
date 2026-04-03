@@ -32,7 +32,8 @@ export default function RecommendationTag({
 }: {
   recommendation: Recommendation;
 }) {
-  const { label, icon, className } = config[recommendation];
+  const entry = config[recommendation] ?? config.normal;
+  const { label, icon, className } = entry;
   return (
     <span
       className={clsx(

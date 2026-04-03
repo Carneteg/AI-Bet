@@ -39,10 +39,10 @@ export default function HomePage() {
       {/* Stats strip */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
         {[
-          { label: "Matcher analyserade", value: "13" },
-          { label: "Spikar", value: "3" },
-          { label: "Garderingar", value: "5" },
-          { label: "Skrällvarningar", value: "2" },
+          { label: "Matcher analyserade", value: matches.length },
+          { label: "Spikar", value: matches.filter((m) => m.recommendation === "spik").length },
+          { label: "Garderingar", value: matches.filter((m) => m.recommendation === "gardering").length },
+          { label: "Skrällvarningar", value: matches.filter((m) => m.recommendation === "skräll").length },
         ].map((stat) => (
           <div
             key={stat.label}

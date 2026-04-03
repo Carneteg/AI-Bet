@@ -67,31 +67,29 @@ function AnalyzedMatchCard({
   match: AnalyzedMatchResult;
   index: number;
 }) {
-  const edgeHome = match.probability.home - match.streckning.home;
-  const edgeDraw = match.probability.draw - match.streckning.draw;
-  const edgeAway = match.probability.away - match.streckning.away;
+  const prob = match.probability ?? { home: 45, draw: 25, away: 30 };
+  const streck = match.streckning ?? { home: 45, draw: 25, away: 30 };
+
+  const edgeHome = prob.home - streck.home;
+  const edgeDraw = prob.draw - streck.draw;
+  const edgeAway = prob.away - streck.away;
 
   const bestEdge = Math.max(edgeHome, edgeDraw, edgeAway);
   const bestSign =
     bestEdge === edgeHome ? "1" : bestEdge === edgeDraw ? "X" : "2";
 
-  const valueScore = Math.min(
-    100,
-    Math.max(0, Math.round(50 + bestEdge * 2.5))
-  );
+  const valueScore = Number.isFinite(bestEdge)
+    ? Math.min(100, Math.max(0, Math.round(50 + bestEdge * 2.5)))
+    : 50;
 
   const bestSignProbability =
-    bestSign === "1"
-      ? match.probability.home
-      : bestSign === "X"
-      ? match.probability.draw
-      : match.probability.away;
+    bestSign === "1" ? prob.home : bestSign === "X" ? prob.draw : prob.away;
 
   const recommendation = calculateRecommendation({
     valueScore,
-    bestEdge,
+    bestEdge: Number.isFinite(bestEdge) ? bestEdge : 0,
     bestSignProbability,
-    homeProbability: match.probability.home,
+    homeProbability: prob.home,
   });
 
   return (
@@ -135,11 +133,11 @@ function AnalyzedMatchCard({
                 </div>
               )}
               <div className="text-xs text-slate-400">
-                {match.probability[key]}%{" "}
+                {prob[key]}%{" "}
                 <span className="text-slate-600">sannolikhet</span>
               </div>
               <div className="text-xs text-slate-400">
-                {match.streckning[key]}%{" "}
+                {streck[key]}%{" "}
                 <span className="text-slate-600">streckat</span>
               </div>
               <div

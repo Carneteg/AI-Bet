@@ -41,7 +41,7 @@ export default function MatchCard({ match, expanded = false }: Props) {
               {i === 0 ? "1" : i === 1 ? "X" : "2"}
             </div>
             <div className="font-bold text-sm">
-              {match.odds[key].toFixed(2)}
+              {match.odds[key]?.toFixed(2) ?? "—"}
             </div>
             <div className="text-xs text-slate-500">
               {match.probabilities[key]}%
@@ -71,12 +71,15 @@ export default function MatchCard({ match, expanded = false }: Props) {
   );
 }
 
+const FORM_LABELS: Record<string, string> = { V: "Vinst", F: "Förlust", O: "Oavgjort" };
+
 function FormDots({ form }: { form: string }) {
   return (
-    <div className="flex gap-1">
-      {form.split(" ").map((result, i) => (
+    <div className="flex gap-1" aria-label={`Form: ${form.split("").map((r) => FORM_LABELS[r] ?? r).join(", ")}`}>
+      {form.split("").map((result, i) => (
         <span
           key={i}
+          aria-hidden="true"
           className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
             result === "V"
               ? "bg-accent-green/20 text-accent-green"
