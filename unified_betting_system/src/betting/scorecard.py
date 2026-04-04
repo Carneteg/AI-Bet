@@ -2,10 +2,10 @@ from typing import Dict, Union
 
 class BetScorecard:
     def __init__(self):
-        # Classification Thresholds
+        # Classification Thresholds (Assisted Protocol)
         self.thresh_high = 7
-        self.thresh_medium = 4
-        self.thresh_low = 1
+        self.thresh_medium = 5
+        self.thresh_low = 3
 
     def grade(self, 
               ev: float, 

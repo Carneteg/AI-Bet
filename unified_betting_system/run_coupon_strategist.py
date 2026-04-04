@@ -1,50 +1,50 @@
-import argparse
 import pandas as pd
-from src.utils import setup_logger
-from src.coupon_strategist.svenska_spel_1x2 import SvenskaSpelCoupon
-from src.coupon_strategist.markdown_formatter import MarkdownFormatter
-import json
+from src.coupon_strategist.coupon_engine import CouponEngineV2
 
-logger = setup_logger("COUPON_STRATEGIST")
-
-def main():
-    parser = argparse.ArgumentParser(description="Evaluate Coupon EV vs Public Bias")
-    parser.add_argument("--coupon-data", type=str, required=True, 
-                        help="JSON file containing matches with True Probs and Streck Probs")
-    parser.add_argument("--product", type=str, default="Svenska Spel: Stryktipset")
-    args = parser.parse_args()
-
-    # Load data
-    try:
-        with open(args.coupon_data, 'r', encoding='utf-8') as f:
-            matches = json.load(f)
-    except Exception as e:
-        logger.error(f"Failed to load coupon data: {e}")
-        return
-
-    logger.info(f"Loaded {len(matches)} matches for {args.product} analysis.")
-
-    # Evaluate
-    engine = SvenskaSpelCoupon()
-    evaluated_matches = []
+def run_coupon_analysis(match_data: list):
+    engine = CouponEngineV2()
     
-    for match in matches:
-        res = engine.evaluate_match(match)
-        evaluated_matches.append(res)
-        
-    # Format and Output
-    formatter = MarkdownFormatter()
+    # 1. Generate Classifications
+    classifications = [engine.classify_match(m) for m in match_data]
     
-    report = f"# Quantitative Analysis: {args.product}\n\n"
-    report += formatter.format_match_analysis(evaluated_matches, args.product)
-    report += formatter.format_system_recommendation(evaluated_matches, args.product)
-    report += formatter.format_bankroll(evaluated_matches, args.product)
-    report += formatter.format_pass_list(evaluated_matches)
-
-    print("\n" + "="*50)
-    print(report)
-    print("="*50 + "\n")
-    logger.info("Coupon execution complete.")
+    # 2. Build Table 1 - Match classification
+    df_class = pd.DataFrame(classifications)
+    # Reorder/Rename for cleaner output
+    df_output = df_class[['match', 'best_pick', 'type', 'confidence', 'reason']].copy()
+    df_output.columns = ['Match', 'Best pick', 'Type', 'Confidence', 'Reason']
+    
+    print("\n### Table – Match classification")
+    print(df_output.to_string(index=False))
+    
+    # 3. Generate Coupon Versions
+    coupons = engine.build_coupons(classifications)
+    
+    print("\n### Generate 3 coupon versions:")
+    print(f"1. **SAFE**: {coupons['SAFE']}")
+    print(f"2. **BALANCED**: {coupons['BALANCED']}")
+    print(f"3. **AGGRESSIVE**: {coupons['AGGRESSIVE']}")
+    
+    # 4. Strategy Notes
+    print("\n### Strategy Notes")
+    print("- **Attack Variance**: The Aggressive coupon slims down HALVs to SPIKs on value edges to increase potential payout.")
+    print("- **Protect against Bias**: TRAPs (Public overvalued favorites) are covered or faded in Balanced/Aggressive versions.")
 
 if __name__ == "__main__":
-    main()
+    # Mock data for demonstration (representing the example matches)
+    mock_matches = [
+        {
+            "home_team": "Arsenal", "away_team": "Everton",
+            "home_win_prob": 0.72, "draw_prob": 0.18, "away_win_prob": 0.10,
+            "home_edge": 0.03, "draw_edge": -0.05, "away_edge": -0.08,
+            "confidence": 0.65,
+            "home_streck": 82, "draw_streck": 12, "away_streck": 6 # Public favorite (82% vs 72% model)
+        },
+        {
+            "home_team": "Chelsea", "away_team": "Liverpool",
+            "home_win_prob": 0.35, "draw_prob": 0.25, "away_win_prob": 0.40,
+            "home_edge": -0.02, "draw_edge": 0.01, "away_edge": 0.04,
+            "confidence": 0.62,
+            "home_streck": 30, "draw_streck": 25, "away_streck": 45
+        }
+    ]
+    run_coupon_analysis(mock_matches)

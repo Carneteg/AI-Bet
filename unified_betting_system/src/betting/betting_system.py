@@ -53,14 +53,15 @@ class BettingSystem:
         movement = match.get('odds_movement', 0.0)
         missing_data = match.get('missing_data_flag', False)
         
-        # 2. Run Strict Filter
-        nbf_res = self.no_bet_filter.evaluate(
-            edge=edge, ev=ev, confidence=confidence, 
-            data_quality=data_qual, odds_movement=movement, missing_data_flag=missing_data
-        )
-        if nbf_res['decision'] == "PASS":
-            return self._build_pass_output(match_str, f"No-Bet Filter: {nbf_res['reason']}")
-            
+        # 2. Daily Assistant Protocol: "Golden Gates" (Strict Mathematical Discipline)
+        # Any game missing these targets is a definitive PASS
+        if edge < 0.04:
+            return self._build_pass_output(match_str, f"Edge ({edge*100:.1f}%) < 4.0% floor.")
+        if ev < 0.03:
+            return self._build_pass_output(match_str, f"EV ({ev*100:.1f}%) < 3.0% floor.")
+        if confidence < 0.58:
+            return self._build_pass_output(match_str, f"Confidence ({confidence:.2f}) < 0.58 floor.")
+
         # 3. Decision Engine Check
         dec_res = self.decision_engine.evaluate_bet(
             model_probability=prob, odds=odds, 
@@ -105,7 +106,7 @@ class BettingSystem:
             "edge": round(edge, 4),
             "confidence": round(confidence, 4),
             "stake_amount": stake_res['stake_amount'],
-            "stake_percent": stake_res['stake_percent'],
+            "stake_units": stake_res['stake_units'],
             "reasoning": f"Grade: {classification}. {stake_res['explanation']}"
         }
 

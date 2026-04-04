@@ -19,50 +19,49 @@ class StakeEngine:
                   confidence_level: str, 
                   current_daily_exposure: float = 0.0) -> Dict[str, Union[float, str]]:
         """
-        Calculates disciplined bankroll deployment combining Fractional Kelly 
-        and strict confidence-based exposure mapping.
+        Calculates disciplined bankroll deployment based on fixed units:
+        LOW = 0.5u, MEDIUM = 1.0u, HIGH = 1.5u, VERY HIGH = 2.0u
+        (1 unit = 1% of bankroll)
         """
         
         if odds <= 1.0 or probability <= 0.0 or bankroll <= 0.0:
             return self._build_zero_response("Invalid input parameters (odds, prob, or bankroll).")
 
-        b = odds - 1.0
-        kelly_pure = ((probability * odds) - 1.0) / b
+        # 1 Unit = 1% of bankroll
+        unit_val = bankroll * 0.01
         
-        if kelly_pure <= 0:
-            return self._build_zero_response("Negative Expected Value. Kelly dictates zero stake.")
-            
-        stake_kelly = bankroll * kelly_pure * self.kelly_fraction
-        stake_kelly_pct = stake_kelly / bankroll
+        # Fixed Unit Mapping
+        unit_multiplier = {
+            "LOW": 0.5,
+            "MEDIUM": 1.0,
+            "HIGH": 1.5,
+            "VERY_HIGH": 2.0
+        }.get(confidence_level.upper(), 0.0)
 
-        # Enforce Confidence-Based hard caps
-        confidence_key = str(confidence_level).upper()
-        cap_pct = self.confidence_caps.get(confidence_key, 0.005) # Default to lowest if missing
+        proposed_stake = unit_val * unit_multiplier
+        proposed_stake_pct = proposed_stake / bankroll
+
+        # Rule: Max 2% per bet
+        final_stake = min(proposed_stake, bankroll * 0.02)
         
-        # Max 2% per bet is inherently satisfied by VERY_HIGH tier maxing at 2.0%
-        capped_stake_pct = min(stake_kelly_pct, cap_pct)
-        capped_stake = bankroll * capped_stake_pct
-        
-        # Enforce 5% daily exposure limit
+        # Rule: Max 5% total daily exposure
         available_daily_exposure = (bankroll * self.max_daily_exposure_pct) - current_daily_exposure
         
         if available_daily_exposure <= 0:
              return self._build_zero_response(f"Daily exposure limit of 5% reached.")
              
-        final_stake = min(capped_stake, available_daily_exposure)
+        final_stake = min(final_stake, available_daily_exposure)
         final_stake_pct = final_stake / bankroll
 
         explanation = (
-            f"Pure Kelly indicates {kelly_pure*100:.2f}%. "
-            f"Fractional Kelly (1/4) suggests {stake_kelly_pct*100:.2f}%. "
-            f"Cap applied for {confidence_key} tier: max {cap_pct*100:.2f}%. "
-            f"Final deployment: {final_stake_pct*100:.2f}%."
+            f"Tier: {confidence_level.upper()} ({unit_multiplier}u). "
+            f"Proposed: {proposed_stake:.2f} SEK ({proposed_stake_pct*100:.2f}%). "
+            f"Final deployment after caps: {final_stake_pct*100:.2f}%."
         )
 
         return {
             "stake_amount": round(final_stake, 2),
-            "stake_percent": round(final_stake_pct * 100, 2),
-            "capped_stake": round(capped_stake, 2),
+            "stake_units": unit_multiplier if final_stake >= proposed_stake else round(final_stake / unit_val, 2),
             "explanation": explanation
         }
         

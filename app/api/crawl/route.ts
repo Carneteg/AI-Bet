@@ -36,6 +36,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const secret =
+    req.headers.get("x-crawl-secret") ??
+    req.headers.get("authorization")?.replace("Bearer ", "");
+  if (process.env.CRAWL_API_SECRET && secret !== process.env.CRAWL_API_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "all";
 

@@ -19,3 +19,30 @@ next-env.d.ts
 .DS_Store
 *.pem
 npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Data and Reports
+data/
+REPORTS/
+app/data/
+unified_betting_system/data/
+AI_Bet_Context.md
+consolidate_project.py

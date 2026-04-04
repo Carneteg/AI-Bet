@@ -1,116 +1,111 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 
-class CouponEngine:
+class CouponEngineV2:
     def __init__(self):
-        # SPIK Thresholds
+        # Step 6 Classification Thresholds
         self.spik_min_prob = 0.55
         self.spik_min_edge = 0.03
         self.spik_min_conf = 0.60
         
-    def evaluate_match(self, match: Dict) -> Dict:
+    def classify_match(self, match: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluates a single 1X2 match into SPIK, HALV, HEL, or TRAP classifications.
-        
-        Expected match structure:
-        {
-            "match_id": str,
-            "team_home": str,
-            "team_away": str,
-            "prob_1": float, "prob_x": float, "prob_2": float,
-            "edge_1": float, "edge_x": float, "edge_2": float,
-            "confidence": float,
-            "public_bias": str # "1", "X", "2", or "NONE" indicates overvaluation by public
-        }
+        Executes Step 6 Classification: SPIK, HALV, HEL, or TRAP.
         """
-        p1, px, p2 = match.get('prob_1', 0), match.get('prob_x', 0), match.get('prob_2', 0)
-        e1, ex, e2 = match.get('edge_1', 0), match.get('edge_x', 0), match.get('edge_2', 0)
-        conf = match.get('confidence', 0.50)
-        bias = match.get('public_bias', "NONE")
+        home = match.get('home_team', 'Home')
+        away = match.get('away_team', 'Away')
+        match_str = f"{home} vs {away}"
         
-        # Identify statistical favorite
-        outcomes = [("1", p1, e1), ("X", px, ex), ("2", p2, e2)]
+        # 1. Profile Extraction
+        p1 = float(match.get('home_win_prob', 0))
+        px = float(match.get('draw_prob', 0))
+        p2 = float(match.get('away_win_prob', 0))
+        
+        e1 = float(match.get('home_edge', 0))
+        ex = float(match.get('draw_edge', 0))
+        e2 = float(match.get('away_edge', 0))
+        
+        conf = float(match.get('confidence', 0.50))
+        # Public bias is often 'streckning' (Swedish pool percentages)
+        s1 = float(match.get('home_streck', 0))
+        sx = float(match.get('draw_streck', 0))
+        s2 = float(match.get('away_streck', 0))
+
+        # Identify favorite and value
+        outcomes = [("1", p1, e1, s1), ("X", px, ex, sx), ("2", p2, e2, s2)]
         outcomes.sort(key=lambda x: x[1], reverse=True)
         
-        fav_sign, fav_prob, fav_edge = outcomes[0]
-        runner_up_sign, runner_up_prob, runner_up_edge = outcomes[1]
+        fav_sign, fav_prob, fav_edge, fav_streck = outcomes[0]
+        runner_up_sign, runner_up_prob, runner_up_edge, runner_up_streck = outcomes[1]
         
-        classification = "HEL"
-        suggested_picks = ["1", "X", "2"]
-        reasoning = "High uncertainty. Covering all bases."
+        # 2. TRAP Detection (Overvalued Favorite)
+        # Definition: Public overvalues favorite (>10% above model) and edge is negative
         is_trap = False
-        
-        # 1. TRAP Evaluator
-        # If public heavily overvalues the favorite (indicated by bias matching fav_sign) and edge is negative
-        if bias == fav_sign and fav_edge < 0:
+        if (fav_streck / 100.0) > (fav_prob + 0.10) and fav_edge < 0:
             is_trap = True
-            classification = "HEL" # or wide HALV
-            suggested_picks = ["1", "X", "2"]
-            reasoning = f"TRAP: Public overvalues favorite {fav_sign} (Edge: {fav_edge*100:.1f}%). Forcing full coverage."
+
+        classification = "HEL"
+        suggested_picks = "1X2"
+        reasoning = "High variance / Low edge environment."
+
+        if is_trap:
+            classification = "TRAP"
+            suggested_picks = "X2" if fav_sign == "1" else "1X" if fav_sign == "2" else "12"
+            reasoning = f"Public overvalues {fav_sign} ({fav_streck}%). Model fades to {suggested_picks}."
             
-        # 2. SPIK Evaluator
-        elif fav_prob > self.spik_min_prob and fav_edge > self.spik_min_edge and conf > self.spik_min_conf and bias != fav_sign:
+        elif fav_prob > self.spik_min_prob and fav_edge > self.spik_min_edge and conf > self.spik_min_conf:
             classification = "SPIK"
-            suggested_picks = [fav_sign]
-            reasoning = f"Core SPIK: Clear dominant probability {fav_prob*100:.1f}% with positive edge {fav_edge*100:.1f}%."
+            suggested_picks = fav_sign
+            reasoning = f"Solid mathematical anchor. {fav_prob*100:.0f}% prob with {fav_edge*100:.1f}% edge."
             
-        # 3. HALV Evaluator (Tight match or moderate edge on top 2)
-        elif abs(fav_prob - runner_up_prob) < 0.15 or (fav_edge > 0.01 and runner_up_edge > 0.01):
+        elif abs(fav_prob - runner_up_prob) < 0.15 or fav_edge > 0.01:
             classification = "HALV"
-            suggested_picks = [fav_sign, runner_up_sign]
-            reasoning = f"HALV: Two tightly contested outcomes or dual-positive edges. Covering {fav_sign} and {runner_up_sign}."
+            # Sort top 2 by value if prob is close
+            picks = sorted([fav_sign, runner_up_sign])
+            suggested_picks = "".join(picks)
+            reasoning = "Two outcomes closely matched. Cover both to minimize variance."
 
         return {
-            "match_id": match.get('match_id', 'Unknown'),
-            "teams": f"{match.get('team_home', 'Home')} vs {match.get('team_away', 'Away')}",
-            "classification": classification,
-            "suggested_picks": suggested_picks,
-            "is_trap": is_trap,
-            "reasoning": reasoning
+            "match": match_str,
+            "best_pick": fav_sign if classification == "SPIK" else suggested_picks,
+            "type": classification,
+            "confidence": conf,
+            "reason": reasoning,
+            "picks_list": list(suggested_picks) if classification != "HEL" else ["1", "X", "2"]
         }
 
-    def generate_coupons(self, evaluated_matches: List[Dict]) -> Dict[str, List[List[str]]]:
+    def build_coupons(self, classifications: List[Dict[str, Any]]) -> Dict[str, str]:
         """
-        Generates overarching system coupon strategies based on evaluated matches.
-        Returns the exact picks required per match for each strategy.
+        Builds the 3 required coupon versions: SAFE, BALANCED, AGGRESSIVE.
         """
-        safe_coupon = []
-        balanced_coupon = []
-        aggressive_coupon = []
-        
-        for m in evaluated_matches:
-            c_class = m['classification']
-            picks = m['suggested_picks']
-            is_trap = m['is_trap']
+        safe = []
+        balanced = []
+        aggressive = []
+
+        for c in classifications:
+            c_type = c['type']
+            picks = c['picks_list']
             
-            # Safe ignores traps context and covers heavy where needed
-            if c_class == "SPIK":
-                safe_coupon.append(picks)
-                balanced_coupon.append(picks)
-                # Aggressive might fade a SPIK if confidence isn't max, but mostly plays it
-                aggressive_coupon.append(picks)
-                
-            elif c_class == "HALV":
-                safe_coupon.append(picks)
-                balanced_coupon.append(picks)
-                # Aggressive tries to find a lone edge to slim the coupon
-                aggressive_coupon.append([picks[0]]) 
-                
-            elif c_class == "HEL":
-                if is_trap:
-                    safe_coupon.append(["1", "X", "2"])
-                    balanced_coupon.append(["1", "X", "2"])
-                    # Aggressive fades the trap completely
-                    possible_fades = [p for p in ["1", "X", "2"] if p not in picks] # Wait, if picks is 1x2, we need original fav
-                    # We will simply leave out the public favorite in aggressive traps
-                    # Since we didn't store fav_sign, we'll just play X2 or 1X depending on trap
-                    aggressive_coupon.append(["1", "2"]) # Boom or bust contrarian
-                else:
-                    safe_coupon.append(["1", "X", "2"])
-                    balanced_coupon.append(picks[:2]) # Trim Hel to Halv
-                    aggressive_coupon.append([picks[0]]) # YOLO SPIK
-                    
+            # SAFE: Maxi-Gardering
+            if c_type == "SPIK":
+                # Only spike if confidence is very high, otherwise cover
+                safe.append("".join(picks) if c['confidence'] > 0.7 else "".join(sorted(picks + ["X"])))
+                balanced.append("".join(picks))
+                aggressive.append("".join(picks))
+            elif c_type == "TRAP":
+                safe.append("1X2") # Cover the trap fully
+                balanced.append("".join(picks)) # Fade the favorite
+                aggressive.append("".join(picks)) # Fade the favorite
+            elif c_type == "HALV":
+                safe.append("1X2") # Upgrade Halv to Hel
+                balanced.append("".join(picks))
+                aggressive.append(picks[0]) # Slim to Spik
+            else: # HEL
+                safe.append("1X2")
+                balanced.append("1X2")
+                aggressive.append("".join(picks[:1])) # YOLO
+
         return {
-            "SAFE": safe_coupon,
-            "BALANCED": balanced_coupon,
-            "AGGRESSIVE": aggressive_coupon
+            "SAFE": "-".join(safe),
+            "BALANCED": "-".join(balanced),
+            "AGGRESSIVE": "-".join(aggressive)
         }
