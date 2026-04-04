@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     let rawContent = "{}";
 
     if (isAnthropic) {
-      // Anthropic Claude 3.5 Sonnet
+      // Anthropic Claude Sonnet 4.6
       const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-3-5-sonnet-20240620",
+          model: "claude-sonnet-4-6",
           max_tokens: 2000,
           system: SYSTEM_PROMPT,
           messages: [
