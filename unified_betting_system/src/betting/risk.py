@@ -1,5 +1,5 @@
 class RiskManager:
-    def __init__(self, kelly_fraction: float = 0.25, max_bet_pct: float = 0.05):
+    def __init__(self, kelly_fraction: float = 0.25, max_bet_pct: float = 0.03):
         self.kelly_fraction = kelly_fraction
         self.max_bet_pct = max_bet_pct
 

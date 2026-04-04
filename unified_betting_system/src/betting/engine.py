@@ -19,20 +19,26 @@ class BettingEngine:
     def _determine_best_outcome(self, row) -> dict:
         outcomes = []
         
-        # We define a helper block to safely parse and grade an edge
-        def evaluate_side(odds_key, prob_key, selection_name):
-            if odds_key in row and prob_key in row:
+        # ----------------------------------------------------
+        # NEW RULE: Draw Avoidance in Low-Scoring Leagues 
+        # (Meaning: Penalize Outright Draws when implied goal averages are high > 2.7)
+        # ----------------------------------------------------
+        draw_prob_adj = row['draw_prob']
+        if row.get('league_avg_goals', 2.5) > 2.7:
+            draw_prob_adj = draw_prob_adj * 0.95  # Manually deduct 5% probability
+
+        def evaluate_side(odds_key, prob_val, selection_name):
+            if odds_key in row:
                 base_decision = self.decision_engine.evaluate_bet(
-                    model_probability=row[prob_key],
+                    model_probability=prob_val,
                     odds=row[odds_key],
-                    confidence_score=row.get('confidence', 0.60),  # Defaults for missing data
+                    confidence_score=row.get('confidence', 0.60),
                     data_quality_score=row.get('data_quality', 0.95),
                     segment_roi=row.get('segment_roi', 0.05),
-                    current_exposure=0.0 # Handled in portfolio manager later
+                    current_exposure=0.0
                 )
                 
                 if base_decision['decision'] in ["BET", "SMALL_BET"]:
-                    # Invoke Scorecard
                     grade = self.scorecard.grade(
                         ev=base_decision['ev'],
                         confidence=row.get('confidence', 0.60),
@@ -48,21 +54,21 @@ class BettingEngine:
                         outcomes.append({
                             "selection": selection_name,
                             "odds": row[odds_key],
-                            "model_prob": row[prob_key],
+                            "model_prob": prob_val,
                             "ev": base_decision['ev'],
                             "edge": base_decision['edge'],
                             "classification": grade['classification'],
                             "score": grade['total_score']
                         })
 
-        evaluate_side('home_odds', 'home_win_prob', 'Home Win')
-        evaluate_side('draw_odds', 'draw_prob', 'Draw')
-        evaluate_side('away_odds', 'away_win_prob', 'Away Win')
+        if 'home_win_prob' in row: evaluate_side('home_odds', row['home_win_prob'], 'Home Win')
+        if 'draw_prob' in row: evaluate_side('draw_odds', draw_prob_adj, 'Draw')
+        if 'away_win_prob' in row: evaluate_side('away_odds', row['away_win_prob'], 'Away Win')
 
         if not outcomes:
             return {}
             
-        return max(outcomes, key=lambda x: x['score']) # Pick best purely by quantitative scorecard
+        return max(outcomes, key=lambda x: x['score'])
 
     def run(self, df_preds: pd.DataFrame, df_odds: pd.DataFrame) -> List[Dict]:
         logger.info(f"Initiating Quantitative Engine on bankroll: ${self.bankroll}")
