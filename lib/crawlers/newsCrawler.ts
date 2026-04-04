@@ -326,7 +326,7 @@ export async function crawlAllNewsSources(): Promise<NewsAnalysis> {
     const name = (tip.horseName ?? tip.teamName ?? "").toLowerCase();
     if (name) bankarCount.set(name, (bankarCount.get(name) ?? 0) + 1);
   }
-  const consensusBankers = [...bankarCount.entries()]
+  const consensusBankers = Array.from(bankarCount.entries())
     .filter(([, count]) => count >= 2)
     .map(([name]) => name);
 
@@ -336,7 +336,7 @@ export async function crawlAllNewsSources(): Promise<NewsAnalysis> {
     const name = (tip.horseName ?? tip.teamName ?? "").toLowerCase();
     if (name) skrällCount.set(name, (skrällCount.get(name) ?? 0) + 1);
   }
-  const consensusSkrällar = [...skrällCount.entries()]
+  const consensusSkrällar = Array.from(skrällCount.entries())
     .filter(([, count]) => count === 1) // Ensam skräll = bäst value
     .map(([name]) => name);
 
