@@ -10,7 +10,7 @@ export function OpportunityCard({ opportunity, rank }: { opportunity: Opportunit
   const [isQuantExpanded, setIsQuantExpanded] = useState(false);
   
   // Calculate if odds drifted or steamed
-  const isDrift = event.odds.currentOdds > event.odds.openingOdds;
+    const isDrift = (event.odds?.currentOdds ?? 0) > (event.odds?.openingOdds ?? 0);
   
   return (
     <div className="bg-gray-800/80 backdrop-blur border border-gray-700/50 rounded-xl p-6 shadow-xl transition-all hover:border-emerald-500/30 hover:bg-gray-800/90 group mb-6">
@@ -47,7 +47,7 @@ export function OpportunityCard({ opportunity, rank }: { opportunity: Opportunit
         <div className="flex items-center space-x-4 mt-4">
           <div className="bg-gray-800 px-4 py-2 rounded-md border border-gray-700 w-full flex justify-between items-center">
             <span className="text-sm text-gray-400">Opening (Syn.)</span>
-            <span className="font-mono text-gray-300">{event.odds.openingOdds.toFixed(2)}</span>
+            <span className="font-mono text-gray-300">{(event.odds?.openingOdds ?? 0).toFixed(2)}</span>
           </div>
           <div className="text-gray-500">
             {isDrift ? <TrendingUp className="text-red-400" size={24} /> : <TrendingDown className="text-emerald-400" size={24} />}
@@ -55,7 +55,7 @@ export function OpportunityCard({ opportunity, rank }: { opportunity: Opportunit
           <div className="bg-gray-800 px-4 py-2 rounded-md border border-gray-700 w-full flex justify-between items-center">
             <span className="text-sm text-gray-400">Current</span>
             <span className={`font-mono font-bold ${isDrift ? 'text-red-400' : 'text-emerald-400'}`}>
-              {event.odds.currentOdds.toFixed(2)}
+              {(event.odds?.currentOdds ?? 0).toFixed(2)}
             </span>
           </div>
         </div>
@@ -177,14 +177,14 @@ export function OpportunityCard({ opportunity, rank }: { opportunity: Opportunit
                    {quantBreakdown.outcomes.map((row, i) => (
                      <tr key={i} className="hover:bg-gray-800/20">
                        <td className="px-4 py-3 font-sans font-medium text-white">{row.selection}</td>
-                       <td className="px-4 py-3 text-right">{row.odds.toFixed(2)}</td>
+                       <td className="px-4 py-3 text-right">{(row.odds ?? 0).toFixed(2)}</td>
                        <td className="px-4 py-3 text-right">{row.impliedProb}%</td>
                        <td className="px-4 py-3 text-right text-indigo-300">{row.modelProb}%</td>
                        <td className={`px-4 py-3 text-right font-bold ${row.edge > 0 ? 'text-emerald-400' : 'text-gray-500'}`}>
                          {row.edge > 0 ? '+' : ''}{row.edge}%
                        </td>
                        <td className={`px-4 py-3 text-right font-black ${row.ev > 0 ? 'text-emerald-400' : 'text-red-400/80'}`}>
-                         {row.ev.toFixed(3)}
+                         {(row.ev ?? 0).toFixed(3)}
                        </td>
                      </tr>
                    ))}
