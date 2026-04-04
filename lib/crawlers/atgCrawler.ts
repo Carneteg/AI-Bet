@@ -146,7 +146,7 @@ function parseATGStart(start: ATGStart, raceDistance: number): HorseEntry {
     postPosition: start.postPosition,
     startType: (start.scratched ? "volt" : "volt") as "volt" | "auto", // ATG ger startmetod på race-nivå
     distance: raceDistance,
-    recentForm: ["O", "O", "O", "O", "O"], // Uppdateras av travsport-crawler
+    recentForm: ["0", "0", "0", "0", "0"], // Uppdateras av travsport-crawler
     bestKmTime: "1.14,0", // Uppdateras av travsport-crawler
     kmTimeValue: 74.0,
     earnings,
