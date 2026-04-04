@@ -1,0 +1,6 @@
+match_id,home_team,away_team,date,home_win_prob,draw_prob,away_win_prob,home_odds,draw_odds,away_odds,winning_selection
+m1,Arsenal,Everton,2024-05-19,0.72,0.18,0.10,1.45,4.80,9.00,Home Win
+m2,Chelsea,Liverpool,2024-05-19,0.35,0.25,0.40,2.60,3.30,2.80,Away Win
+m3,Man City,Aston Villa,2024-05-19,0.85,0.10,0.05,1.15,8.00,15.00,Home Win
+m4,Spurs,Newcastle,2024-05-19,0.48,0.24,0.28,1.90,3.80,3.60,Draw
+m5,Brentford,Fulham,2024-05-19,0.30,0.40,0.30,2.40,3.20,2.90,Draw
