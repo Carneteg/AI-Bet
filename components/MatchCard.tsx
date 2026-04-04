@@ -57,7 +57,7 @@ export default function MatchCard({ match, expanded = false }: Props) {
             >
               <div className="text-xs text-slate-500 mb-0.5">{sign}</div>
               <div className="font-bold text-sm">
-                {match.odds[key].toFixed(2)}
+                {(match.odds[key] ?? 0).toFixed(2)}
               </div>
               <div className="text-xs text-slate-400">
                 {match.probabilities[key]}%
@@ -74,7 +74,7 @@ export default function MatchCard({ match, expanded = false }: Props) {
                 }`}
               >
                 {streckEdge > 0 ? "+" : ""}
-                {streckEdge.toFixed(0)}pp
+                {(streckEdge ?? 0).toFixed(0)}pp
               </div>
             </div>
           );
@@ -84,9 +84,9 @@ export default function MatchCard({ match, expanded = false }: Props) {
       {/* xG-rad */}
       <div className="flex items-center justify-between text-xs text-slate-500 mb-3 px-1">
         <span>
-          xG: <span className="text-slate-300 font-semibold">{match.xg.home.toFixed(2)}</span>
+          xG: <span className="text-slate-300 font-semibold">{(match.xg?.home ?? 0).toFixed(2)}</span>
           <span className="mx-1 text-slate-600">—</span>
-          <span className="text-slate-300 font-semibold">{match.xg.away.toFixed(2)}</span>
+          <span className="text-slate-300 font-semibold">{(match.xg?.away ?? 0).toFixed(2)}</span>
         </span>
         <span
           className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -123,7 +123,7 @@ export default function MatchCard({ match, expanded = false }: Props) {
             {kellyResult.kelly.recommendedStakePercent}% av bankroll
           </span>
           <span className="text-slate-600">
-            (EV {kellyResult.kelly.expectedValue.toFixed(2)}x)
+            (EV {(kellyResult.kelly.expectedValue ?? 0).toFixed(2)}x)
           </span>
         </div>
       )}
