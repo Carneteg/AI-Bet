@@ -24,13 +24,25 @@ VIKTIGT:
 `;
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  
+  // Use Anthropic if the key starts with 'sk-ant' or if only ANTHROPIC_API_KEY is provided
+  // Otherwise default to OpenAI
+  let apiKey = openaiKey || anthropicKey;
+  let isAnthropic = false;
+
+  if (apiKey?.startsWith('sk-ant')) {
+    isAnthropic = true;
+  } else if (!openaiKey && anthropicKey) {
+    apiKey = anthropicKey;
+    isAnthropic = true;
+  }
 
   if (!apiKey) {
     return NextResponse.json(
       {
-        error:
-          "OPENAI_API_KEY är inte konfigurerad. Lägg till den i Render Environment Variables.",
+        error: "Ingen API-nyckel konfigurerad. Lägg till OPENAI_API_KEY eller ANTHROPIC_API_KEY.",
       },
       { status: 503 }
     );
@@ -53,53 +65,103 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = imageFile.type || "image/jpeg";
 
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64}`,
-                  detail: "high",
+    let rawContent = "{}";
+
+    if (isAnthropic) {
+      // Anthropic Claude 3.5 Sonnet
+      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-sonnet-20240620",
+          max_tokens: 2000,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mimeType,
+                    data: base64,
+                  },
                 },
-              },
-              {
-                type: "text",
-                text: "Analysera denna bild och extrahera alla matcher du kan se. Returnera som JSON.",
-              },
-            ],
-          },
-        ],
-      }),
-    });
+                {
+                  type: "text",
+                  text: "Analysera denna bild och extrahera alla matcher du kan se. Returnera som JSON enligt formatet i system_prompt.",
+                },
+              ],
+            },
+          ],
+        }),
+      });
 
-    if (!openaiRes.ok) {
-      const errData = await openaiRes.json().catch(() => ({}));
-      const msg = errData?.error?.message ?? `OpenAI API svarade med status ${openaiRes.status}`;
-      return NextResponse.json({ error: msg }, { status: 502 });
+      if (!anthropicRes.ok) {
+        const errData = await anthropicRes.json().catch(() => ({}));
+        const msg = errData?.error?.message ?? `Anthropic API svarade med status ${anthropicRes.status}`;
+        return NextResponse.json({ error: msg }, { status: 502 });
+      }
+
+      const anthropicData = await anthropicRes.json();
+      rawContent = anthropicData.content?.[0]?.text ?? "{}";
+    } else {
+      // OpenAI GPT-4o
+      const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          max_tokens: 2000,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: SYSTEM_PROMPT,
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${mimeType};base64,${base64}`,
+                    detail: "high",
+                  },
+                },
+                {
+                  type: "text",
+                  text: "Analysera denna bild och extrahera alla matcher du kan se. Returnera som JSON.",
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (!openaiRes.ok) {
+        const errData = await openaiRes.json().catch(() => ({}));
+        const msg = errData?.error?.message ?? `OpenAI API svarade med status ${openaiRes.status}`;
+        return NextResponse.json({ error: msg }, { status: 502 });
+      }
+
+      const openaiData = await openaiRes.json();
+      rawContent = openaiData.choices?.[0]?.message?.content ?? "{}";
     }
-
-    const openaiData = await openaiRes.json();
-    const rawContent = openaiData.choices?.[0]?.message?.content ?? "{}";
 
     let parsed: { matches?: unknown[]; error?: string };
     try {
-      parsed = JSON.parse(rawContent);
+      // Strip markdown JSON blocks if present (common with Claude)
+      const cleanJson = rawContent.replace(/```json\n?|\n?```/g, "").trim();
+      parsed = JSON.parse(cleanJson);
     } catch {
       return NextResponse.json(
         { error: "Kunde inte tolka AI-svaret. Försök med en tydligare bild." },
@@ -117,22 +179,22 @@ export async function POST(req: NextRequest) {
       const prob = match.probability as Record<string, number> ?? { home: 45, draw: 25, away: 30 };
       const streck = match.streckning as Record<string, number> ?? { home: 45, draw: 25, away: 30 };
 
-      const probTotal = (prob.home ?? 0) + (prob.draw ?? 0) + (prob.away ?? 0);
-      const streckTotal = (streck.home ?? 0) + (streck.draw ?? 0) + (streck.away ?? 0);
+      const probTotal = (Number(prob.home) ?? 0) + (Number(prob.draw) ?? 0) + (Number(prob.away) ?? 0);
+      const streckTotal = (Number(streck.home) ?? 0) + (Number(streck.draw) ?? 0) + (Number(streck.away) ?? 0);
 
       return {
         homeTeam: match.homeTeam ?? "Okänt hemmalag",
         awayTeam: match.awayTeam ?? "Okänt bortalag",
         league: match.league ?? null,
         probability: {
-          home: probTotal > 0 ? Math.round((prob.home / probTotal) * 100) : 45,
-          draw: probTotal > 0 ? Math.round((prob.draw / probTotal) * 100) : 25,
-          away: probTotal > 0 ? Math.round((prob.away / probTotal) * 100) : 30,
+          home: probTotal > 0 ? Math.round((Number(prob.home) / probTotal) * 100) : 45,
+          draw: probTotal > 0 ? Math.round((Number(prob.draw) / probTotal) * 100) : 25,
+          away: probTotal > 0 ? Math.round((Number(prob.away) / probTotal) * 100) : 30,
         },
         streckning: {
-          home: streckTotal > 0 ? Math.round((streck.home / streckTotal) * 100) : 45,
-          draw: streckTotal > 0 ? Math.round((streck.draw / streckTotal) * 100) : 25,
-          away: streckTotal > 0 ? Math.round((streck.away / streckTotal) * 100) : 30,
+          home: streckTotal > 0 ? Math.round((Number(streck.home) / streckTotal) * 100) : 45,
+          draw: streckTotal > 0 ? Math.round((Number(streck.draw) / streckTotal) * 100) : 25,
+          away: streckTotal > 0 ? Math.round((Number(streck.away) / streckTotal) * 100) : 30,
         },
         odds: match.odds ?? null,
         rawText: match.rawText ?? null,
