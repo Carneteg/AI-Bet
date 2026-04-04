@@ -68,7 +68,5 @@ class BetScorecard:
             
         return {
             "total_score": score,
-            "classification": classification,
-            "ev_registered": ev,
-            "confidence_registered": confidence
+            "classification": classification
         }
