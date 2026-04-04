@@ -9,6 +9,7 @@ export const metadata = {
   description: "Scanning live odds for market inefficiencies and hidden value.",
 };
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 300;
 
 export default async function AnalystDashboard() {
