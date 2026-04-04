@@ -10,7 +10,9 @@ class Storage:
         self.output_file = output_file
         
         # Ensure directory exists
-        os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
+        dir_name = os.path.dirname(self.output_file)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
 
     def save_to_jsonl(self, data: List[Dict[str, Any]]):
         """

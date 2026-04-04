@@ -56,7 +56,7 @@ class Backtester:
             if current_bankroll > peak_bankroll:
                 peak_bankroll = current_bankroll
             else:
-                drawdown = (peak_bankroll - current_bankroll) / peak_bankroll
+                drawdown = (peak_bankroll - current_bankroll) / peak_bankroll if peak_bankroll > 0 else 0
                 if drawdown > max_drawdown:
                     max_drawdown = drawdown
                     
