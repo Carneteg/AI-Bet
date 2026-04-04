@@ -24,29 +24,39 @@ VIKTIGT:
 `;
 
 export async function POST(req: NextRequest) {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  // Robustly extract and clean keys from environment
+  const cleanKey = (key: string | undefined) => key?.trim().replace(/^["']|["']$/g, "");
   
-  // Use Anthropic if the key starts with 'sk-ant' or if only ANTHROPIC_API_KEY is provided
-  // Otherwise default to OpenAI
-  let apiKey = openaiKey || anthropicKey;
-  let isAnthropic = false;
+  const openaiKeyRaw = process.env.OPENAI_API_KEY;
+  const anthropicKeyRaw = process.env.ANTHROPIC_API_KEY;
+  
+  const openaiKey = cleanKey(openaiKeyRaw);
+  const anthropicKey = cleanKey(anthropicKeyRaw);
+  
+  // Detection logic: prioritize the key that matches the provider's format
+  let apiKey: string | undefined;
+  let provider: 'openai' | 'anthropic' = 'openai';
 
-  if (apiKey?.startsWith('sk-ant')) {
-    isAnthropic = true;
-  } else if (!openaiKey && anthropicKey) {
-    apiKey = anthropicKey;
-    isAnthropic = true;
+  // Check if either key is explicitly an Anthropic key
+  if (openaiKey?.startsWith('sk-ant') || anthropicKey?.startsWith('sk-ant')) {
+    apiKey = openaiKey?.startsWith('sk-ant') ? openaiKey : anthropicKey;
+    provider = 'anthropic';
+  } else {
+    apiKey = openaiKey || anthropicKey;
+    provider = 'openai';
   }
 
   if (!apiKey) {
     return NextResponse.json(
       {
-        error: "Ingen API-nyckel konfigurerad. Lägg till OPENAI_API_KEY eller ANTHROPIC_API_KEY.",
+        error: "Ingen API-nyckel konfigurerad. Kontrollera OPENAI_API_KEY eller ANTHROPIC_API_KEY i serverinställningarna.",
+        diagnostics: { openaiSet: !!openaiKey, anthropicSet: !!anthropicKey }
       },
       { status: 503 }
     );
   }
+
+  const isAnthropic = provider === 'anthropic';
 
   try {
     const formData = await req.formData();
