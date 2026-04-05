@@ -276,7 +276,20 @@ export function getTeamFormStats(): Map<string, TeamFormStats> {
 
 export function lookupTeamForm(teamName: string): TeamFormStats | null {
   const map = getTeamFormStats();
-  return map.get(teamName.toLowerCase()) ?? null;
+  const lower = teamName.toLowerCase();
+
+  // 1. Exact match
+  if (map.has(lower)) return map.get(lower)!;
+
+  // 2. Partial match: handle API suffixes like "Manchester City FC" → "Manchester City"
+  //    or short names like "Man City" matching "manchester city"
+  for (const [key, value] of map.entries()) {
+    if (lower.includes(key) || key.includes(lower)) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
 export function enrichMatchWithSoccerwayData<

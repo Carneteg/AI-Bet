@@ -40,6 +40,24 @@ export function calculateValueScore(match: Match): number {
 }
 
 export function getValueBreakdown(match: Match): ValueBreakdown {
+  // Guard: if odds are missing or zero, return a neutral "unknown" breakdown
+  // rather than propagating NaN (1/0 = Infinity, Infinity/Infinity = NaN).
+  if (
+    !match.odds.home || match.odds.home <= 0 ||
+    !match.odds.draw || match.odds.draw <= 0 ||
+    !match.odds.away || match.odds.away <= 0
+  ) {
+    return {
+      oddsEdge: 0,
+      streckningEdge: 0,
+      compositeScore: 0,
+      bestSign: "1",
+      bestOddsEdge: 0,
+      bestStreckningEdge: 0,
+      isStreckningValue: false,
+    };
+  }
+
   // ── Odds-baserad edge ──────────────────────────────────────────────
   const impliedHome = (1 / match.odds.home) * 100;
   const impliedDraw = (1 / match.odds.draw) * 100;
