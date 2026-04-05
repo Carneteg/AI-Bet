@@ -4,19 +4,44 @@ import { useState, useCallback } from "react";
 import MatchImageUpload from "@/components/MatchImageUpload";
 import type { AnalyzedMatchResult } from "@/components/MatchImageUpload";
 
+interface AnalysisSession {
+  id: string;          // file fingerprint
+  analyzedAt: Date;
+  results: AnalyzedMatchResult[];
+}
+
 export default function UploadPage() {
-  const [results, setResults] = useState<AnalyzedMatchResult[]>([]);
+  /** The active (latest) session. null while no analysis has completed yet. */
+  const [session, setSession] = useState<AnalysisSession | null>(null);
+  /** Up to 3 previous sessions shown as history. */
+  const [history, setHistory] = useState<AnalysisSession[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalysis = useCallback((data: AnalyzedMatchResult[]) => {
-    setResults(data);
+  /** Called immediately when a new file is selected — wipes prior results. */
+  const handleReset = useCallback(() => {
+    setSession(null);
     setError(null);
   }, []);
 
+  const handleAnalysis = useCallback(
+    (data: AnalyzedMatchResult[], sessionId: string) => {
+      const newSession: AnalysisSession = {
+        id: sessionId,
+        analyzedAt: new Date(),
+        results: data,
+      };
+      setSession(newSession);
+      setError(null);
+      // Keep last 3 completed sessions as history (excluding current)
+      setHistory((prev) => [newSession, ...prev].slice(0, 4).slice(1));
+    },
+    []
+  );
+
   const handleError = useCallback((msg: string) => {
     setError(msg);
-    setResults([]);
+    setSession(null);
   }, []);
 
   return (
@@ -30,11 +55,22 @@ export default function UploadPage() {
       </div>
 
       <MatchImageUpload
+        onReset={handleReset}
         onAnalysis={handleAnalysis}
         onError={handleError}
         setIsLoading={setIsLoading}
         isLoading={isLoading}
       />
+
+      {/* Loading state — shown while prior results are cleared */}
+      {isLoading && (
+        <div className="mt-8 bg-surface-card border border-brand/20 rounded-2xl p-6 text-center">
+          <p className="text-brand font-semibold">Analyserar ny bild…</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Tidigare resultat har rensats. Väntar på svar från AI:n.
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="mt-6 bg-accent-red/10 border border-accent-red/30 rounded-xl p-4 text-accent-red text-sm">
@@ -42,19 +78,66 @@ export default function UploadPage() {
         </div>
       )}
 
-      {results.length > 0 && (
+      {/* Active session results */}
+      {!isLoading && session && (
         <div className="mt-10 space-y-4">
-          <h2 className="text-2xl font-bold mb-6">
-            Analysresultat —{" "}
-            <span className="text-brand">{results.length} matcher hittade</span>
-          </h2>
-          {results.map((match, i) => (
-            <AnalyzedMatchCard key={i} match={match} index={i} />
-          ))}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="text-2xl font-bold">
+              Analysresultat —{" "}
+              <span className="text-brand">{session.results.length} matcher hittade</span>
+            </h2>
+            {/* Freshness timestamp */}
+            <span className="text-xs text-slate-500 bg-surface-card border border-slate-700 rounded-full px-3 py-1">
+              Analyserad{" "}
+              <RelativeTime date={session.analyzedAt} />
+            </span>
+          </div>
+
+          {session.results.length === 0 ? (
+            <div className="bg-surface-card border border-slate-700 rounded-xl p-6 text-center text-slate-400 text-sm">
+              Inga matcher hittades i bilden. Försök med en tydligare bild.
+            </div>
+          ) : (
+            session.results.map((match, i) => (
+              <AnalyzedMatchCard key={`${session.id}-${i}`} match={match} index={i} />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Recent analysis history */}
+      {history.length > 0 && !isLoading && (
+        <div className="mt-14">
+          <h2 className="text-lg font-bold mb-4 text-slate-400">Tidigare analyser</h2>
+          <div className="space-y-3">
+            {history.map((s) => (
+              <div
+                key={s.id}
+                className="bg-surface-card border border-slate-700 rounded-xl px-5 py-3 flex items-center justify-between gap-4"
+              >
+                <div className="text-sm text-slate-300">
+                  {s.results.length} matcher hittade
+                </div>
+                <div className="text-xs text-slate-500">
+                  <RelativeTime date={s.analyzedAt} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+/** Displays time relative to now, updating every 30 s. */
+function RelativeTime({ date }: { date: Date }) {
+  const diffS = Math.round((Date.now() - date.getTime()) / 1000);
+  if (diffS < 10) return <span>just nu</span>;
+  if (diffS < 60) return <span>{diffS} sekunder sedan</span>;
+  const diffM = Math.round(diffS / 60);
+  if (diffM < 60) return <span>{diffM} min sedan</span>;
+  return <span>{date.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}</span>;
 }
 
 function AnalyzedMatchCard({
@@ -80,7 +163,10 @@ function AnalyzedMatchCard({
   const recommendation =
     valueScore >= 75 && match.probability.home >= 55
       ? "Spik"
-      : bestEdge >= 8 && match.probability[bestSign === "1" ? "home" : bestSign === "X" ? "draw" : "away"] <= 30
+      : bestEdge >= 8 &&
+        match.probability[
+          bestSign === "1" ? "home" : bestSign === "X" ? "draw" : "away"
+        ] <= 30
       ? "Skräll"
       : valueScore < 50
       ? "Gardering"
@@ -148,11 +234,11 @@ function AnalyzedMatchCard({
               )}
               <div className="text-xs text-slate-400">
                 {match.probability[key]}%{" "}
-                <span className="text-slate-600">sannolikhet</span>
+                <span className="text-slate-600">san.</span>
               </div>
               <div className="text-xs text-slate-400">
                 {match.streckning[key]}%{" "}
-                <span className="text-slate-600">streckat</span>
+                <span className="text-slate-600">streck</span>
               </div>
               <div
                 className={`text-xs font-bold mt-1 ${
@@ -174,7 +260,7 @@ function AnalyzedMatchCard({
             style={{ width: `${valueScore}%` }}
           />
         </div>
-        <div className="text-sm font-semibold text-brand">
+        <div className="text-sm font-semibold text-brand tabular-nums">
           {valueScore}{" "}
           <span className="text-xs font-normal text-slate-500">
             /{" "}
@@ -196,4 +282,4 @@ function AnalyzedMatchCard({
       )}
     </div>
   );
-      }
+}
