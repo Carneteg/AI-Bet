@@ -14,6 +14,7 @@
 import type { Match, Recommendation, Selection } from "@/data/matches";
 import { getPoissonProbabilities } from "@/lib/poisson";
 import { getValueBreakdown } from "@/lib/valueScore";
+import { getServerConfig } from "@/lib/config";
 import { lookupTeamForm } from "@/lib/datasources/soccerway";
 
 const BASE_URL = "https://api.football-data.org/v4";
@@ -41,9 +42,12 @@ interface FDMatchesResponse {
   matches: FDMatch[];
 }
 
-const HEADERS = {
-  "X-Auth-Token": process.env.FOOTBALL_DATA_API_KEY ?? "",
-};
+function getFootballDataHeaders() {
+  const { FOOTBALL_DATA_API_KEY } = getServerConfig();
+  return {
+    "X-Auth-Token": FOOTBALL_DATA_API_KEY ?? "",
+  };
+}
 
 // Competition codes för filter (Stryktips-relevanta)
 const STRYKTIPS_COMPETITIONS = [
@@ -94,12 +98,12 @@ function teamGoalVariance(teamId: number, seed: number): number {
 }
 
 async function fetchJSON<T>(path: string): Promise<T | null> {
-  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
-  if (!apiKey) return null;
+  const { FOOTBALL_DATA_API_KEY } = getServerConfig();
+  if (!FOOTBALL_DATA_API_KEY) return null;
 
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
-      headers: HEADERS,
+      headers: getFootballDataHeaders(),
       next: { revalidate: 300 }, // Cache 5 min
     });
     if (!res.ok) return null;

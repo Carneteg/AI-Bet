@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAiApiKey } from "@/lib/config";
 
 export const maxDuration = 60;
 

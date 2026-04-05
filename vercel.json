@@ -1,0 +1,22 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "env": {
+    "FOOTBALL_DATA_API_KEY": "@football_data_api_key",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "ANTHROPIC_API_KEY": "@anthropic_api_key"
+  },
+  "preview": {
+    "env": {
+      "FOOTBALL_DATA_API_KEY": "@football_data_api_key"
+    }
+  },
+  "regions": ["iad1"],
+  "functions": {
+    "app/api/**": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}
