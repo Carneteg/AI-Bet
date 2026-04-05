@@ -13,13 +13,22 @@ export interface AnalyzedMatchResult {
 }
 
 interface Props {
-  onAnalysis: (results: AnalyzedMatchResult[]) => void;
+  /** Called immediately when a new file is selected — parent should clear prior results. */
+  onReset: () => void;
+  /** Called with results + session ID when analysis completes successfully. */
+  onAnalysis: (results: AnalyzedMatchResult[], sessionId: string) => void;
   onError: (msg: string) => void;
   setIsLoading: (v: boolean) => void;
   isLoading: boolean;
 }
 
+/** Stable fingerprint for a File: name + size + last-modified timestamp. */
+function fileFingerprint(file: File): string {
+  return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
 export default function MatchImageUpload({
+  onReset,
   onAnalysis,
   onError,
   setIsLoading,
@@ -28,7 +37,14 @@ export default function MatchImageUpload({
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
+  /** The session ID of the most recently started upload. Used to discard stale responses. */
+  const activeSessionRef = useRef<string | null>(null);
+  /** AbortController for the current in-flight fetch. Cancelled when a new upload starts. */
+  const abortControllerRef = useRef<AbortController | null>(null);
+  /** Stored so the "Analysera igen" button can re-run without re-selecting. */
+  const currentFileRef = useRef<File | null>(null);
 
   const processFile = useCallback(
     async (file: File) => {
@@ -41,9 +57,23 @@ export default function MatchImageUpload({
         return;
       }
 
-      setFileName(file.name);
+      // 1. Cancel any in-flight request from the previous upload.
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      // 2. Generate a unique session ID for this upload.
+      const sessionId = fileFingerprint(file);
+      activeSessionRef.current = sessionId;
+      currentFileRef.current = file;
+
+      // 3. Reset parent state immediately — no stale results while loading.
+      onReset();
+
+      // 4. Update local preview.
       const objectUrl = URL.createObjectURL(file);
       setPreview(objectUrl);
+      setFileName(file.name);
       setIsLoading(true);
 
       try {
@@ -53,7 +83,11 @@ export default function MatchImageUpload({
         const res = await fetch("/api/analyze-image", {
           method: "POST",
           body: formData,
+          signal: controller.signal,
         });
+
+        // 5. Stale-result guard: discard if a newer upload has already started.
+        if (activeSessionRef.current !== sessionId) return;
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -61,18 +95,26 @@ export default function MatchImageUpload({
         }
 
         const data = await res.json();
-        onAnalysis(data.matches ?? []);
+
+        // 6. Final stale check after await.
+        if (activeSessionRef.current !== sessionId) return;
+
+        onAnalysis(data.matches ?? [], sessionId);
       } catch (err) {
+        if ((err as Error).name === "AbortError") return; // Superseded — silent.
+        if (activeSessionRef.current !== sessionId) return;
         onError(
           err instanceof Error
             ? err.message
             : "Något gick fel vid analysen. Försök igen."
         );
       } finally {
-        setIsLoading(false);
+        if (activeSessionRef.current === sessionId) {
+          setIsLoading(false);
+        }
       }
     },
-    [onAnalysis, onError, setIsLoading]
+    [onReset, onAnalysis, onError, setIsLoading]
   );
 
   const handleDrop = useCallback(
@@ -89,9 +131,16 @@ export default function MatchImageUpload({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) processFile(file);
+      // Reset input value so the same file can be selected again (re-analyze trigger).
+      e.target.value = "";
     },
     [processFile]
   );
+
+  /** Re-run analysis on the same file without re-selecting. */
+  const handleReanalyze = useCallback(() => {
+    if (currentFileRef.current) processFile(currentFileRef.current);
+  }, [processFile]);
 
   return (
     <div className="space-y-6">
@@ -118,7 +167,7 @@ export default function MatchImageUpload({
         {isLoading ? (
           <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 rounded-full border-4 border-brand/30 border-t-brand animate-spin" />
-            <p className="text-slate-400 font-medium">Analyserar bild med AI...</p>
+            <p className="text-slate-400 font-medium">Analyserar ny bild med AI…</p>
             <p className="text-slate-500 text-sm">Det tar 5–15 sekunder</p>
           </div>
         ) : preview ? (
@@ -130,7 +179,7 @@ export default function MatchImageUpload({
             />
             <p className="text-slate-400 text-sm">{fileName}</p>
             <p className="text-brand text-sm font-medium">
-              Klicka för att byta bild
+              Klicka för att ladda upp en ny bild
             </p>
           </div>
         ) : (
@@ -157,7 +206,17 @@ export default function MatchImageUpload({
         )}
       </div>
 
-      {/* Instructions */}
+      {/* Re-analyze button — only visible after a completed analysis */}
+      {preview && !isLoading && (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleReanalyze(); }}
+          className="w-full border border-slate-600 hover:border-brand/40 text-slate-400 hover:text-white transition rounded-xl py-2.5 text-sm font-medium"
+        >
+          Analysera igen (samma bild)
+        </button>
+      )}
+
+      {/* Instructions — only when no image loaded */}
       {!preview && !isLoading && (
         <div className="bg-surface-card border border-slate-700 rounded-xl p-4">
           <p className="text-slate-400 text-sm font-medium mb-3">
@@ -173,4 +232,4 @@ export default function MatchImageUpload({
       )}
     </div>
   );
-      }
+}
