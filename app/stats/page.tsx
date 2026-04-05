@@ -24,6 +24,69 @@ export default function StatsPage() {
   // Item 8: most recent bet date as "last updated" signal
   const lastUpdated = [...betHistory].map((b) => b.date).sort().at(-1);
 
+  // STATS-11: Dynamic narrative insights derived from performance data
+  const insights: { text: string; color: string }[] = [];
+
+  if (settled.length < 20) {
+    insights.push({
+      text: `Bara ${settled.length} avgjorda spel — för tidigt att dra slutsatser. Sikta på 50+ spel för statistisk tillförlitlighet.`,
+      color: "text-slate-400",
+    });
+  } else if (settled.length < SIGNIFICANCE_THRESHOLD) {
+    insights.push({
+      text: `${settled.length} spel loggade — snart tillräckligt för mer tillförlitliga slutsatser (mål: 50+).`,
+      color: "text-accent-yellow",
+    });
+  }
+
+  if (perf.roi > 10) {
+    insights.push({
+      text: `Stark positiv ROI på +${perf.roi}% — metoden levererar verklig avkastning. Håll disciplinen och fortsätt logga.`,
+      color: "text-accent-green",
+    });
+  } else if (perf.roi > 0) {
+    insights.push({
+      text: `Positiv ROI på +${perf.roi}% — bra start. Mer data behövs för att bekräfta att trenden håller.`,
+      color: "text-accent-green",
+    });
+  } else {
+    insights.push({
+      text: `Negativ ROI på ${perf.roi}% — analysera vilka spel och ligor som drar ner resultatet och justera.`,
+      color: "text-accent-red",
+    });
+  }
+
+  if (perf.avgCLV >= 3) {
+    insights.push({
+      text: `Snitt-CLV på +${perf.avgCLV}% överstiger 3%-målet — du identifierar edge innan marknaden stänger.`,
+      color: "text-accent-green",
+    });
+  } else if (perf.avgCLV >= 0) {
+    insights.push({
+      text: `CLV är positivt (+${perf.avgCLV}%) men under 3%-målet — metodiken är på rätt spår, fortsätt optimera oddsval.`,
+      color: "text-accent-yellow",
+    });
+  } else {
+    insights.push({
+      text: `Negativt CLV (${perf.avgCLV}%) tyder på att oddsen är sämre än marknadens konsensus — se över hur du väljer odds.`,
+      color: "text-accent-red",
+    });
+  }
+
+  if (settled.length >= 10) {
+    if (perf.winRate > 65) {
+      insights.push({
+        text: `Hög vinstfrekvens (${perf.winRate}%) — kontrollera att snitt-oddsen är tillräckliga för långsiktig lönsamhet.`,
+        color: "text-accent-yellow",
+      });
+    } else if (perf.winRate < 40) {
+      insights.push({
+        text: `Låg vinstfrekvens (${perf.winRate}%) — vanligt vid höga odds. Positivt CLV är viktigare mått än vinstfrekvens.`,
+        color: "text-slate-400",
+      });
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto">
       {/* STATS-01 + STATS-02: Hero – value prop, context, above-fold CTA */}
@@ -153,6 +216,28 @@ export default function StatsPage() {
         </div>
       </section>
 
+      {/* STATS-11: Narrative insights block */}
+      {insights.length > 0 && (
+        <section aria-labelledby="insights-heading" className="mb-10">
+          <h2
+            id="insights-heading"
+            className="text-xs text-slate-500 uppercase tracking-widest mb-4"
+          >
+            Insikter
+          </h2>
+          <div className="bg-surface-card border border-slate-700 rounded-2xl p-5 space-y-3">
+            {insights.map((insight, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <span className={`mt-0.5 shrink-0 ${insight.color}`} aria-hidden="true">
+                  •
+                </span>
+                <p className={insight.color}>{insight.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* STATS-09: CLV explanation box */}
       <section aria-labelledby="clv-heading" className="mb-10">
         <div className="bg-surface-card border border-brand/20 rounded-2xl p-5">
@@ -246,16 +331,24 @@ export default function StatsPage() {
         </section>
       )}
 
-      {/* STATS-05 + STATS-06 + STATS-07: Spellog as sortable semantic table */}
+      {/* STATS-05 + STATS-06 + STATS-07 + STATS-14: Spellog */}
       <section aria-labelledby="betlog-heading" className="mb-10">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <h2 id="betlog-heading" className="text-xl font-bold">
             Spellog
           </h2>
-          <span className="text-xs text-slate-500 tabular-nums">
-            {betHistory.length} spel totalt · klicka kolumnrubriker för att sortera
-          </span>
+          {/* STATS-14: inline add-bet CTA */}
+          <a
+            href="/history"
+            className="inline-flex items-center gap-1.5 bg-brand/10 text-brand border border-brand/20 hover:bg-brand/20 transition-colors font-semibold rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface"
+          >
+            + Lägg till spel
+          </a>
         </div>
+        {/* STATS-14: clarify logging is manual */}
+        <p className="text-xs text-slate-600 mb-4">
+          Spel läggs till manuellt. Klicka på en kolumnrubrik för att sortera.
+        </p>
         {/* STATS-06: overflow-x-auto in BetlogTable handles mobile scroll */}
         <BetlogTable bets={betHistory} />
       </section>
