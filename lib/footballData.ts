@@ -14,6 +14,7 @@
 import type { Match, Recommendation, Selection } from "@/data/matches";
 import { getPoissonProbabilities } from "@/lib/poisson";
 import { getValueBreakdown } from "@/lib/valueScore";
+import { lookupTeamForm } from "@/lib/datasources/soccerway";
 
 const BASE_URL = "https://api.football-data.org/v4";
 
@@ -29,7 +30,7 @@ interface FDMatch {
     winner: string | null;
     fullTime: { home: number | null; away: number | null };
   };
-  odds?: { homeWin: number; draw: number; awayWin: number };
+  odds?: { homeWin: number | null; draw: number | null; awayWin: number | null };
 }
 
 interface FDTeamMatches {
@@ -322,17 +323,30 @@ async function transformMatch(
     timeZone: "Europe/Stockholm",
   });
 
-  // Hämta lagform om möjligt (kan skippa för att spara API-anrop)
+  // Hardcoded defaults used only when no other data is available
   let homeStats = { formString: "OVOOV", goalsForAvg: 1.4, goalsAgainstAvg: 1.2 };
   let awayStats = { formString: "OVOOV", goalsForAvg: 1.2, goalsAgainstAvg: 1.3 };
 
+  // Step 1: Try local Soccerway cache — zero API calls, covers known Stryktips teams.
+  // Partial name matching handles API name variants like "Manchester City FC" → "Manchester City".
+  const homeLocal = lookupTeamForm(fdMatch.homeTeam.name)
+    ?? lookupTeamForm(fdMatch.homeTeam.shortName);
+  const awayLocal = lookupTeamForm(fdMatch.awayTeam.name)
+    ?? lookupTeamForm(fdMatch.awayTeam.shortName);
+  if (homeLocal) homeStats = homeLocal;
+  if (awayLocal) awayStats = awayLocal;
+
+  // Step 2: Fetch live form from API if requested (overwrites local data when successful)
   if (fetchForm) {
     const [homeMatches, awayMatches] = await Promise.all([
       fetchTeamRecentMatches(fdMatch.homeTeam.id),
       fetchTeamRecentMatches(fdMatch.awayTeam.id),
     ]);
-    homeStats = calculateTeamStats(homeMatches, fdMatch.homeTeam.id);
-    awayStats = calculateTeamStats(awayMatches, fdMatch.awayTeam.id);
+    const liveHome = calculateTeamStats(homeMatches, fdMatch.homeTeam.id);
+    const liveAway = calculateTeamStats(awayMatches, fdMatch.awayTeam.id);
+    // Only override if we got real matches back (not empty defaults)
+    if (homeMatches.length > 0) homeStats = liveHome;
+    if (awayMatches.length > 0) awayStats = liveAway;
   }
 
   // Poisson-sannolikheter
@@ -354,13 +368,18 @@ async function transformMatch(
 
   const streckning = estimateStreckning(poissonProbs);
 
-  // Använd API-odds om tillgängligt, annars estimera
-  const odds = fdMatch.odds
-    ? {
-        home: fdMatch.odds.homeWin,
-        draw: fdMatch.odds.draw,
-        away: fdMatch.odds.awayWin,
-      }
+  // Use API odds only if all three values are valid positive numbers.
+  // The free tier often returns { homeWin: null, draw: null, awayWin: null } — an object
+  // that is truthy but whose null values coerce to 0, causing NaN in downstream calculations.
+  const apiOdds = fdMatch.odds;
+  const hasValidOdds =
+    apiOdds != null &&
+    typeof apiOdds.homeWin === "number" && apiOdds.homeWin > 0 &&
+    typeof apiOdds.draw === "number" && apiOdds.draw > 0 &&
+    typeof apiOdds.awayWin === "number" && apiOdds.awayWin > 0;
+
+  const odds = hasValidOdds
+    ? { home: apiOdds!.homeWin as number, draw: apiOdds!.draw as number, away: apiOdds!.awayWin as number }
     : estimateOdds(poissonProbs);
 
   const { recommendation, recommendedSigns } = determineRecommendation(
