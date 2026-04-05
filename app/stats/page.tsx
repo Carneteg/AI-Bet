@@ -21,6 +21,8 @@ export default function StatsPage() {
     100,
     Math.round((settled.length / SIGNIFICANCE_THRESHOLD) * 100)
   );
+  // Item 8: most recent bet date as "last updated" signal
+  const lastUpdated = [...betHistory].map((b) => b.date).sort().at(-1);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -32,6 +34,12 @@ export default function StatsPage() {
             <p className="text-xs text-slate-500 uppercase tracking-widest mb-2">
               Demo-konto · Jan – Apr 2025
             </p>
+            {/* Item 8: last-updated freshness signal */}
+            {lastUpdated && (
+              <p className="text-xs text-slate-600 -mt-1 mb-2">
+                Senast uppdaterad: {lastUpdated}
+              </p>
+            )}
             <h1
               id="stats-heading"
               className="text-4xl font-extrabold mb-3"
@@ -190,6 +198,15 @@ export default function StatsPage() {
               </dd>
             </div>
           </dl>
+          {/* Item 7: link to methodology page */}
+          <div className="mt-4 pt-4 border-t border-brand/10">
+            <a
+              href="/analyst"
+              className="text-xs text-brand hover:text-brand/80 transition-colors focus:outline-none focus:underline"
+            >
+              Läs mer om hur vi analyserar matcher →
+            </a>
+          </div>
         </div>
       </section>
 
