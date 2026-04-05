@@ -8,7 +8,7 @@ import { buildCouponStrategy } from "@/lib/stryktipsStrategy";
 export const revalidate = 300;
 
 async function getMatches(): Promise<{ matches: Match[]; source: "live" | "fallback" }> {
-  const live = await fetchLiveMatches(false);
+  const live = await fetchLiveMatches(true);
   if (live && live.length > 0) return { matches: live, source: "live" };
   return { matches: fallbackMatches, source: "fallback" };
 }

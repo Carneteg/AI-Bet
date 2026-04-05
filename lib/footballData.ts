@@ -474,7 +474,7 @@ async function transformMatch(
  * @param fetchTeamForm - Hämta lagform via extra API-anrop (mer träffsäkert men långsammare)
  */
 export async function fetchLiveMatches(
-  fetchTeamForm = false
+  fetchTeamForm = true
 ): Promise<Match[] | null> {
   if (!process.env.FOOTBALL_DATA_API_KEY) return null;
 

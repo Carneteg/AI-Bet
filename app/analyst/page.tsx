@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 300;
 
 export default async function AnalystDashboard() {
-  const live = await fetchLiveMatches(false);
+  const live = await fetchLiveMatches(true);
   const rawMatches = (live && live.length > 0) ? live : fallbackMatches;
   
   const opportunities = analyzeMarkets(rawMatches).slice(0, 5); // Take top 5

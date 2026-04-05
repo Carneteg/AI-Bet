@@ -6,7 +6,7 @@ import MatchCard from "@/components/MatchCard";
 export const revalidate = 300; // Uppdatera var 5:e minut
 
 async function getMatches(): Promise<{ matches: Match[]; source: "live" | "fallback" }> {
-  const live = await fetchLiveMatches(false);
+  const live = await fetchLiveMatches(true);
   if (live && live.length > 0) return { matches: live, source: "live" };
   return { matches: fallbackMatches, source: "fallback" };
 }
